@@ -16,7 +16,7 @@ from sklearn.ensemble import ExtraTreesClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.pipeline import Pipeline
-from sklearn.grid_search import ParameterGrid
+from sklearn.model_selection import ParameterGrid
 from sklearn.linear_model import SGDClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.kernel_approximation import Nystroem
@@ -74,8 +74,8 @@ def build_decisionTreeClassifiers(random_state=None):
         'criterion': ['gini', 'entropy'],
         'max_features': [None, 'auto', 'sqrt', 'log2'],
         'max_depth': [None, 1, 2, 5, 10],
-        'min_samples_split': [1, 2, 5, 10],
-        'random_state': [rs.random_integers(100000) for i in xrange(3)],
+        'min_samples_split': [2, 5, 10],
+        'random_state': [rs.random_integers(100000) for i in range(3)],
     }
 
     return build_models(DecisionTreeClassifier, param_grid)
@@ -137,7 +137,7 @@ def build_kernPipelines(random_state=None):
     print('Building Kernel Approximation Pipelines')
 
     param_grid = {
-        'n_components': xrange(5, 105, 5),
+        'n_components': range(5, 105, 5),
         'gamma': np.logspace(-6, 2, 9, base=2)
     }
 
@@ -155,7 +155,7 @@ def build_kmeansPipelines(random_state=None):
     print('Building KMeans-Logistic Regression Pipelines')
 
     param_grid = {
-        'n_clusters': xrange(5, 205, 5),
+        'n_clusters': range(5, 205, 5),
         'init': ['k-means++', 'random'],
         'n_init': [1, 2, 5, 10],
         'random_state': [random_state],

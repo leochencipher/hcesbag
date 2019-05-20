@@ -24,14 +24,14 @@ import sys
 import sqlite3
 import numpy as np
 from math import sqrt
-from cPickle import loads, dumps
+from pickle import loads, dumps
 from collections import Counter
 
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.utils import check_random_state
 from sklearn.metrics import f1_score, roc_auc_score
 from sklearn.metrics import mean_squared_error, accuracy_score
-from sklearn.cross_validation import StratifiedKFold
+from sklearn.model_selection import StratifiedKFold
 from sklearn.preprocessing import LabelBinarizer
 
 
@@ -260,7 +260,7 @@ class EnsembleSelectionClassifier(BaseEstimator, ClassifierMixin):
             insert_stmt = """insert into models (model_idx, pickled_model)
                              values (?, ?)"""
             with db_conn:
-                vals = ((i, buffer(dumps(m))) for i, m in enumerate(models))
+                vals = ((i, memoryview(dumps(m))) for i, m in enumerate(models))
                 db_conn.executemany(insert_stmt, vals)
                 create_stmt = "create index models_index on models (model_idx)"
                 db_conn.execute(create_stmt)
@@ -279,7 +279,7 @@ class EnsembleSelectionClassifier(BaseEstimator, ClassifierMixin):
             # clumsy hack to get n_classes
             curs.execute("select probs from model_scores limit 1")
             r = curs.fetchone()
-            probs = loads(str(r[0]))
+            probs = loads(r[0])
             self._n_classes = probs.shape[1]
 
         db_conn.close()
@@ -300,9 +300,9 @@ class EnsembleSelectionClassifier(BaseEstimator, ClassifierMixin):
         if (self.use_bootstrap):
             n = X.shape[0]
             rs = check_random_state(self.random_state)
-            self._folds = [_bootstraps(n, rs) for _ in xrange(self.n_folds)]
+            self._folds = [_bootstraps(n, rs) for _ in range(self.n_folds)]
         else:
-            self._folds = list(StratifiedKFold(y, n_folds=self.n_folds))
+            self._folds = StratifiedKFold(n_splits=self.n_folds)
 
         select_stmt = "select pickled_model from models where model_idx = ?"
         insert_stmt = """insert into fitted_models
@@ -312,19 +312,19 @@ class EnsembleSelectionClassifier(BaseEstimator, ClassifierMixin):
         db_conn = sqlite3.connect(self.db_file)
         curs = db_conn.cursor()
 
-        for model_idx in xrange(self._n_models):
+        for model_idx in range(self._n_models):
 
             curs.execute(select_stmt, [model_idx])
             pickled_model = curs.fetchone()[0]
-            model = loads(str(pickled_model))
+            model = loads(pickled_model)
 
             model_folds = []
 
-            for fold_idx, fold in enumerate(self._folds):
+            for fold_idx, fold in enumerate(self._folds.split(X,y)):
                 train_inds, _ = fold
                 model.fit(X[train_inds], y[train_inds])
 
-                pickled_model = buffer(dumps(model))
+                pickled_model = memoryview(dumps(model))
                 model_folds.append((model_idx, fold_idx, pickled_model))
 
             with db_conn:
@@ -371,15 +371,15 @@ class EnsembleSelectionClassifier(BaseEstimator, ClassifierMixin):
         curs = db_conn.cursor()
 
         # build probs array using the test sets for each internal CV fold
-        for model_idx in xrange(self._n_models):
+        for model_idx in range(self._n_models):
             probs = np.zeros((len(X), self._n_classes))
 
-            for fold_idx, fold in enumerate(self._folds):
+            for fold_idx, fold in enumerate(self._folds.split(X,y)):
                 _, test_inds = fold
 
                 curs.execute(select_stmt, [model_idx, fold_idx])
                 res = curs.fetchone()
-                model = loads(str(res[0]))
+                model = loads(res[0])
 
                 probs[test_inds] = model.predict_proba(X[test_inds])
 
@@ -387,7 +387,7 @@ class EnsembleSelectionClassifier(BaseEstimator, ClassifierMixin):
 
             # save score and probs array
             with db_conn:
-                vals = (model_idx, score, buffer(dumps(probs)))
+                vals = (model_idx, score, memoryview(dumps(probs)))
                 db_conn.execute(insert_stmt, vals)
 
             if (self.verbose):
@@ -420,7 +420,7 @@ class EnsembleSelectionClassifier(BaseEstimator, ClassifierMixin):
 
         for row in curs.fetchall():
             model_idx, probs = row
-            probs = loads(str(probs))
+            probs = loads(probs)
             weight = ensemble[model_idx]
             ensemble_probs += probs * weight
 
@@ -441,7 +441,7 @@ class EnsembleSelectionClassifier(BaseEstimator, ClassifierMixin):
         row = curs.fetchone()
 
         n_models = float(n_models)
-        new_probs = loads(str(row[0]))
+        new_probs = loads(row[0])
         new_probs = (probs*n_models + new_probs)/(n_models + 1.0)
 
         score = self._metric(y, y_bin, new_probs)
@@ -525,7 +525,7 @@ class EnsembleSelectionClassifier(BaseEstimator, ClassifierMixin):
         curs.execute(select_stmt)
         row = curs.fetchone()
 
-        return row[0], loads(str(row[1]))
+        return row[0], loads(row[1])
 
     def best_model(self):
         """Returns best model found after CV scoring"""
@@ -586,7 +586,7 @@ class EnsembleSelectionClassifier(BaseEstimator, ClassifierMixin):
 
         # make bags and ensembles
         rs = check_random_state(self.random_state)
-        for i in xrange(self.n_bags):
+        for i in range(self.n_bags):
             # get bag_size elements at random
             cand_indices = rs.permutation(n_models)[:bag_size]
 
@@ -634,11 +634,11 @@ class EnsembleSelectionClassifier(BaseEstimator, ClassifierMixin):
 
         # average probs over each n_folds models
         probs = np.zeros((len(X), self._n_classes))
-        for fold_idx in xrange(self.n_folds):
+        for fold_idx in range(self.n_folds):
             curs.execute(select_stmt, [model_idx, fold_idx])
 
             res = curs.fetchone()
-            model = loads(str(res[0]))
+            model = loads(res[0])
 
             probs += model.predict_proba(X)/float(self.n_folds)
 

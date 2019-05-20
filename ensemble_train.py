@@ -71,7 +71,7 @@ from argparse import ArgumentParser
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import classification_report
 from sklearn.datasets import load_svmlight_file
-from sklearn.cross_validation import train_test_split
+from sklearn.model_selection import train_test_split
 
 from ensemble import EnsembleSelectionClassifier
 from model_library import build_model_library
