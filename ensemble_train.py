@@ -20,6 +20,7 @@ The user can choose from the following candidate models:
     extra   : Extra Trees
     kmp     : KMeans->LogisticRegression Pipelines
     kern    : Nystroem->LogisticRegression Pipelines
+    nb      : Gaussian Naive Bayes
 
 usage: ensemble_train.py [-h]
                          [-M {svc,sgd,gbc,dtree,forest,extra,kmp,kernp}
@@ -38,8 +39,8 @@ positional arguments:
 
 optional arguments:
   -h, --help            show this help message and exit
-  -M {svc,sgd,gbc,dtree,forest,extra,kmp,kernp}
-    [{svc,sgd,gbc,dtree,forest,extra,kmp,kernp} ...]
+  -M {svc,sgd,gbc,dtree,forest,extra,kmp,kernp, nb}
+    [{svc,sgd,gbc,dtree,forest,extra,kmp,kernp, nb} ...]
                         model types to include as ensemble candidates
                         (default: ['dtree'])
   -S {f1,auc,rmse,accuracy,xentropy}
@@ -87,7 +88,7 @@ def parse_args():
     parser.add_argument('data_file', help='training data in svm format')
 
     model_choices = ['svc', 'sgd', 'gbc', 'dtree',
-                     'forest', 'extra', 'kmp', 'kernp']
+                     'forest', 'extra', 'kmp', 'kernp', 'nb']
     help_fmt = 'model types to include as ensemble candidates %s' % dflt_fmt
     parser.add_argument('-M', dest='model_types', nargs='+',
                         choices=model_choices,

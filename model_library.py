@@ -12,6 +12,7 @@ from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.utils import check_random_state
 from sklearn.cluster import KMeans
+from sklearn.naive_bayes import GaussianNB
 from sklearn.ensemble import ExtraTreesClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import GradientBoostingClassifier
@@ -28,6 +29,10 @@ def build_models(model_class, param_grid):
 
     return [model_class(**p) for p in ParameterGrid(param_grid)]
 
+def build_gaussianNaiveBayes(random_state=None):
+    param_grid = {
+    }
+    return build_models(GaussianNB, param_grid)
 
 def build_randomForestClassifiers(random_state=None):
     param_grid = {
@@ -35,7 +40,7 @@ def build_randomForestClassifiers(random_state=None):
         'criterion':  ['gini', 'entropy'],
         'max_features': [None, 'auto', 'sqrt', 'log2'],
         'max_depth': [1, 2, 5, 10],
-        'min_density': [0.25, 0.5, 0.75, 1.0],
+        #'min_density': [0.25, 0.5, 0.75, 1.0],
         'random_state': [random_state],
     }
 
@@ -145,7 +150,7 @@ def build_kernPipelines(random_state=None):
 
     for params in ParameterGrid(param_grid):
         nys = Nystroem(**params)
-        lr = LogisticRegression()
+        lr = LogisticRegression(solver='lbfgs')
         models.append(Pipeline([('nys', nys), ('lr', lr)]))
 
     return models
@@ -165,7 +170,7 @@ def build_kmeansPipelines(random_state=None):
 
     for params in ParameterGrid(param_grid):
         km = KMeans(**params)
-        lr = LogisticRegression()
+        lr = LogisticRegression(solver='lbfgs', max_iter = 5000, random_state=random_state)
         models.append(Pipeline([('km', km), ('lr', lr)]))
 
     return models
@@ -180,6 +185,7 @@ models_dict = {
     'extra': build_extraTreesClassifiers,
     'kmp': build_kmeansPipelines,
     'kernp': build_kernPipelines,
+    'nb': build_gaussianNaiveBayes,
 }
 
 
